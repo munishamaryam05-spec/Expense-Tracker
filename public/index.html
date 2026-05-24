@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="style.css">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="wrapper">
+
+        <div class="container">
+            <h1>Expense Tracker</h1>
+            <input type="text" id="name" placeholder="Expense name">
+            <input type="number" id="amount" placeholder="Amount">
+            <button onclick="addExpense()">Add Expense</button>
+            <ul id="expenseList"></ul>
+            <h3 id="total">Total: Rs.0</h3>
+
+                      <div id="chartContainer" style="display:none; margin-top: 20px;">
+                <h3 style="text-align:center; color: #6a0dad;">Spending Chart</h3>
+                <canvas id="expenseChart"></canvas>
+            </div>
+        </div>
+
+        <div class="savings-box">
+            <h2>My Savings</h2>
+            <input type="number" id="savings" placeholder="Enter your savings">
+
+            
+            <button id="setSavingsBtn" onclick="setSavings()">Set Savings</button>
+
+            <!-- ✅ FIX: Fixed typo resetSvings → resetSavings -->
+            <button id="resetBtn" onclick="resetSavings()" style="display: none; margin-top: 10px; background: orange;">Reset Savings</button>
+
+            <br><br>
+
+            <div class="savings-item">
+                <p>Total Savings</p>
+                <h3 id="totalSavings">Rs.0</h3>
+            </div>
+
+            <div class="savings-item spent">
+                <p>Total Spent</p>
+                <h3 id="totalSpent">Rs.0</h3>
+            </div>
+
+            <div class="savings-item remaining">
+                <p>Remaining</p>
+                <h3 id="remaining">Rs.0</h3>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+let mySavings = 0
+
+loadSavings()
+loadExpenses()
+
+function setSavings() {
+    mySavings = Number(document.getElementById('savings').value)
+    if (mySavings == 0) {
+        alert('Please enter your savings amount!')
+        return
+    }
+    fetch('/savings',{
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({savings: mySavings})
+    }
+    )
+    document.getElementById('totalSavings').innerHTML = 'Rs.' + mySavings
+    document.getElementById('savings').disabled = true
+    document.getElementById('savings').style.background = '#f0f0f0'
+    document.getElementById('savings').style.color = 'gray'
+    document.getElementById('setSavingsBtn').disabled = true
+    document.getElementById('setSavingsBtn').style.opacity = '0.5'
+    document.getElementById('setSavingsBtn').innerHTML = 'Savings Set ✅'
+    document.getElementById('resetBtn').style.display = 'block'
+    updateSavings()
+    // ✅ FIX: Removed extra } that was here causing syntax error
+}
+
+function updateSavings() {
+    const spent = Number(document.getElementById('totalSpent').innerHTML.replace('Rs.', ''))
+    const remaining = mySavings - spent
+    document.getElementById('remaining').innerHTML = 'Rs.' + remaining
+}
+
+function resetSavings() {
+    mySavings = 0
+    document.getElementById('savings').value = ''
+    document.getElementById('savings').disabled = false
+    document.getElementById('savings').style.background = 'white'
+    document.getElementById('savings').style.color = 'black'
+    document.getElementById('setSavingsBtn').disabled = false
+    document.getElementById('setSavingsBtn').style.opacity = '1'
+    document.getElementById('setSavingsBtn').innerHTML = 'Set Savings'
+    document.getElementById('resetBtn').style.display = 'none'
+    document.getElementById('totalSavings').innerHTML = 'Rs.0'
+    document.getElementById('remaining').innerHTML = 'Rs.0'
+}
+function loadSavings() {
+    fetch('/savings')
+    .then(function(res) { return res.json() })
+    .then(function(data) {
+        if (data.savings && data.savings > 0) {
+            mySavings = data.savings
+            document.getElementById('totalSavings').innerHTML = 'Rs.' + mySavings
+            document.getElementById('savings').value = mySavings
+            document.getElementById('savings').disabled = true
+            document.getElementById('savings').style.background = '#f0f0f0'
+            document.getElementById('savings').style.color = 'gray'
+            document.getElementById('setSavingsBtn').disabled = true
+            document.getElementById('setSavingsBtn').style.opacity = '0.5'
+            document.getElementById('setSavingsBtn').innerHTML = 'Savings Set ✅'
+            document.getElementById('resetBtn').style.display = 'block'
+        }
+    })
+}
+function loadExpenses() {
+    fetch('/expenses')
+    .then(function(res) { return res.json() })
+    .then(function(data) {
+        const list = document.getElementById('expenseList')
+        list.innerHTML = ''
+        let total = 0
+
+        data.forEach(function(expense) {
+            total += Number(expense.amount)
+            list.innerHTML += '<li>' + expense.name + ' - Rs.' + expense.amount +
+                ' <button onclick="deleteExpense(' + expense.id + ')">Delete</button></li>'
+        })
+
+        document.getElementById('total').innerHTML = 'Total: Rs.' + total
+        document.getElementById('totalSpent').innerHTML = 'Rs.' + total
+        updateSavings()
+
+        // ✅ Update chart every time expenses load
+     
+    })
+}
+
+function addExpense() {
+    const name = document.getElementById('name').value
+    const amount = document.getElementById('amount').value
+    if (name == '' || amount == '') {
+        alert('Please fill both fields!')
+        return
+    }
+    fetch('/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, amount: amount })
+    })
+    .then(function() {
+        loadExpenses()
+        document.getElementById('name').value = ''
+        document.getElementById('amount').value = ''
+    })
+}
+
+function deleteExpense(id) {
+    fetch('/expenses/' + id, { method: 'DELETE' })
+    .then(function() {
+        loadExpenses()
+    })
+}
+</script>
+</body>
+</html>
